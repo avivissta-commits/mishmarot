@@ -1,6 +1,6 @@
 # ShiftApp
 
-אפליקציית ניהול משמרות (React + Vite), RTL, עם שמירת נתונים מול Cloudflare Worker API.
+אפליקציית ניהול משמרות בעברית (React + Vite), עם שמירת נתונים מול Cloudflare Worker ו-KV.
 
 ## הרצה מקומית
 
@@ -9,79 +9,102 @@ npm install
 npm run dev
 ```
 
-הפקודה מריצה שרת פיתוח (ברירת מחדל: http://localhost:5173).
+Vite יריץ את האתר בדרך כלל ב-`http://localhost:5173`.
+לא לפתוח את `index.html` ישירות מה-Finder, כי קבצי React/JSX צריכים לעבור דרך Vite או דרך build.
 
 ## בנייה
 
 ```bash
 npm run build
+npm run preview
 ```
 
-נוצרת תיקיית `dist/` מוכנה להעלאה לכל אחסון סטטי (כולל GitHub Pages).
-`npm run preview` יריץ תצוגה מקומית של תוצר ה-build.
+תוצר ההעלאה נמצא בתיקיית `dist/`.
 
 ## פריסה ל-GitHub Pages
 
-GitHub Pages מגיש אתר פרויקט בכתובת `https://<user>.github.io/<repo>/`, ולכן
-צריך שה-`base` יכלול את שם ה-repo.
+הפרויקט כולל workflow מוכן ב-`.github/workflows/deploy.yml`.
 
-### אפשרות א׳ — אוטומטי (מומלץ)
+1. צרו repo ב-GitHub ודחפו אליו את הפרויקט ל-branch בשם `main`.
+2. ב-GitHub פתחו `Settings -> Pages`.
+3. תחת `Build and deployment`, בחרו `Source: GitHub Actions`.
+4. כל push ל-`main` יבנה ויפרסם את האתר.
 
-הפרויקט כולל workflow ב-`.github/workflows/deploy.yml`:
-
-1. צור repo ב-GitHub ודחוף אליו את הקוד (branch `main`).
-2. ב-**Settings → Pages → Build and deployment → Source** בחר **GitHub Actions**.
-3. כל דחיפה ל-`main` תבנה ותפרוס אוטומטית. ה-workflow מגדיר את `VITE_BASE`
-   לשם ה-repo לבד, כך שהנכסים נטענים מהנתיב הנכון.
-
-### אפשרות ב׳ — ידני עם `gh-pages`
+ה-workflow מגדיר אוטומטית:
 
 ```bash
-VITE_BASE=/<repo>/ npm run build
-npx gh-pages -d dist
+VITE_BASE=/<repo-name>/
 ```
 
-(או `npm run deploy` אחרי שמגדירים `VITE_BASE`.)
+כדי לחבר את האתר ל-Worker בפריסה האוטומטית, הוסיפו ב-GitHub:
+`Settings -> Secrets and variables -> Actions -> Variables -> New repository variable`
 
-> אם מדובר ב-user/organization page (`https://<user>.github.io/`) או דומיין מותאם,
-> השאר את `VITE_BASE` כ-`/`.
+שם:
 
-הערה: קיים `dist/404.html` (עותק של `index.html`) לתמיכה בניווט SPA, וקובץ
-`public/.nojekyll` כדי ש-Pages יגיש נכסים בנתיבים עם `_`.
-
-## חיבור ל-API (Cloudflare Worker)
-
-הנתונים נשמרים מול Cloudflare Worker (הקוד ב-`worker/`).
-
-1. פרוס את ה-Worker:
-   ```bash
-   cd worker
-   wrangler kv namespace create SHIFT_KV      # הדבק את ה-id ל-wrangler.toml
-   wrangler deploy
-   ```
-2. חבר את ה-Frontend לכתובת ה-Worker באחת מהדרכים:
-   - build-time: הגדר `VITE_API_URL` (ראה `.env.example`), או
-   - runtime: הסר את ההערה מ-`window.__SHIFT_API_URL__` ב-`index.html`.
-
-אם ה-API לא זמין, האפליקציה נופלת חזרה לנתוני ברירת מחדל מקומיים כדי שה-UI עדיין יעבוד.
-
-## מבנה
-
+```bash
+VITE_API_URL
 ```
+
+ערך:
+
+```bash
+https://shiftapp-api.<your-subdomain>.workers.dev
+```
+
+## פריסת Cloudflare Worker
+
+ה-Worker נמצא ב-`worker.js` והתצורה ב-`wrangler.toml`.
+
+1. התחברו ל-Cloudflare:
+
+```bash
+npx wrangler login
+```
+
+2. צרו KV namespace:
+
+```bash
+npx wrangler kv namespace create SHIFT_KV
+```
+
+3. העתיקו את ה-`id` שמתקבל לתוך `wrangler.toml` במקום:
+
+```toml
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+```
+
+4. פרסו את ה-Worker:
+
+```bash
+npx wrangler deploy
+```
+
+או דרך הסקריפט:
+
+```bash
+npm run worker:deploy
+```
+
+5. העתיקו את כתובת ה-Worker שהתקבלה אל `VITE_API_URL` ב-GitHub Actions variable.
+
+## מבנה הפרויקט
+
+```text
 .
+├── .github/workflows/deploy.yml
+├── public/.nojekyll
 ├── index.html
-├── vite.config.js
+├── main.jsx
+├── ShiftApp.jsx
+├── api.js
+├── index.css
+├── worker.js
+├── wrangler.toml
 ├── package.json
-├── public/
-│   ├── favicon.svg
-│   └── .nojekyll
-├── src/
-│   ├── main.jsx        # נקודת כניסה
-│   ├── ShiftApp.jsx    # האפליקציה
-│   ├── api.js          # שכבת ה-API (fetch ל-Worker)
-│   └── index.css
-├── worker/
-│   ├── worker.js       # Cloudflare Worker (REST API + KV)
-│   └── wrangler.toml
-└── .github/workflows/deploy.yml
+└── vite.config.js
 ```
+
+## נתונים לפי משתמש
+
+האפליקציה מייצרת מזהה משתמש אנונימי בדפדפן ושולחת אותו ל-Worker דרך `X-User-Id`.
+ה-Worker שומר לכל משתמש מסמך נפרד ב-Cloudflare KV תחת מפתח `user:<id>`.

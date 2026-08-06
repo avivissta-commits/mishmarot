@@ -25,7 +25,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      - run: npm install
 
       # Build with the repository name as the base path so assets resolve on
       # https://<user>.github.io/<repo>/. For a user page or custom domain,
@@ -34,8 +34,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Optional: bake in your Worker API URL at build time.
-          # VITE_API_URL: https://shiftapp-api.your-subdomain.workers.dev
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

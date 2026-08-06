@@ -71,8 +71,8 @@ function defaultDoc() {
         name: "דובנוב",
         accent: "#1677FF",
         shiftTypes: [
-          { id: "w1m", name: "בוקר", kind: "morning", startOptions: ["07:00", "09:00"], endOptions: ["14:00", "15:00"] },
-          { id: "w1e", name: "ערב", kind: "evening", startOptions: ["15:00", "17:00"], endOptions: ["22:00", "23:00"] },
+          { id: "w1m", name: "בוקר", kind: "morning", starts: ["07:00", "08:00", "09:00", "10:00", "11:00"], ends: ["14:00", "15:00", "16:00", "17:00"] },
+          { id: "w1e", name: "ערב", kind: "evening", starts: ["17:00", "18:00", "19:00"], ends: ["21:00", "22:00", "23:00"] },
         ],
       },
       {
@@ -80,8 +80,8 @@ function defaultDoc() {
         name: "אייסטור",
         accent: "#1DB954",
         shiftTypes: [
-          { id: "w2m", name: "בוקר", kind: "morning", startOptions: ["08:00", "09:15"], endOptions: ["15:00", "16:00"] },
-          { id: "w2e", name: "ערב", kind: "evening", startOptions: ["15:00"], endOptions: ["21:30", "22:30"] },
+          { id: "w2m", name: "בוקר", kind: "morning", starts: ["09:15", "09:30"], ends: ["15:00", "15:30"] },
+          { id: "w2e", name: "ערב", kind: "evening", starts: ["15:00"], ends: ["21:30", "22:30"] },
         ],
       },
     ],
@@ -102,6 +102,35 @@ function keyFor(userId) {
   return `user:${userId}`;
 }
 
+function normalizeDoc(doc) {
+  const fallback = defaultDoc();
+  const source = doc && typeof doc === "object" ? doc : {};
+  const workplaces = Array.isArray(source.workplaces) ? source.workplaces : fallback.workplaces;
+
+  return {
+    profile: { ...fallback.profile, ...(source.profile || {}) },
+    workplaces: workplaces.map((workplace) => ({
+      ...workplace,
+      shiftTypes: Array.isArray(workplace.shiftTypes)
+        ? workplace.shiftTypes.map(({ startOptions, endOptions, ...shiftType }) => ({
+            ...shiftType,
+            starts: Array.isArray(shiftType.starts)
+              ? shiftType.starts
+              : Array.isArray(startOptions)
+                ? startOptions
+                : [],
+            ends: Array.isArray(shiftType.ends)
+              ? shiftType.ends
+              : Array.isArray(endOptions)
+                ? endOptions
+                : [],
+          }))
+        : [],
+    })),
+    shifts: Array.isArray(source.shifts) ? source.shifts : [],
+  };
+}
+
 async function loadDoc(env, userId) {
   const raw = await env.SHIFT_KV.get(keyFor(userId));
   if (!raw) {
@@ -111,11 +140,11 @@ async function loadDoc(env, userId) {
   }
   try {
     const doc = JSON.parse(raw);
-    // defensive: guarantee shape
-    doc.profile = doc.profile || {};
-    doc.workplaces = Array.isArray(doc.workplaces) ? doc.workplaces : [];
-    doc.shifts = Array.isArray(doc.shifts) ? doc.shifts : [];
-    return doc;
+    const normalized = normalizeDoc(doc);
+    if (JSON.stringify(normalized) !== raw) {
+      await env.SHIFT_KV.put(keyFor(userId), JSON.stringify(normalized));
+    }
+    return normalized;
   } catch (_) {
     const doc = defaultDoc();
     await env.SHIFT_KV.put(keyFor(userId), JSON.stringify(doc));
