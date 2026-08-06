@@ -108,3 +108,6 @@ npm run worker:deploy
 
 האפליקציה מייצרת מזהה משתמש אנונימי בדפדפן ושולחת אותו ל-Worker דרך `X-User-Id`.
 ה-Worker שומר לכל משתמש מסמך נפרד ב-Cloudflare KV תחת מפתח `user:<id>`.
+
+
+Update README
