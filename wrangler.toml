@@ -1,0 +1,17 @@
+name = "shiftapp-api"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Cloudflare KV namespace binding.
+# Create it once with:
+#   wrangler kv namespace create SHIFT_KV
+# then paste the returned "id" below (and, if you want a local/preview store,
+# run `wrangler kv namespace create SHIFT_KV --preview` and paste preview_id).
+[[kv_namespaces]]
+binding = "SHIFT_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+# preview_id = "REPLACE_WITH_YOUR_PREVIEW_KV_NAMESPACE_ID"
+
+# Optional: restrict CORS to your site by handling it in code, or keep "*" as-is.
+# [vars]
+# ALLOWED_ORIGIN = "https://your-frontend.example.com"
