@@ -16,7 +16,7 @@
  * Replace the fallback with your real Worker URL, e.g.
  *   https://shiftapp-api.<your-subdomain>.workers.dev
  */
-const FALLBACK_API_BASE = "https://shiftapp-api.example.workers.dev";
+const FALLBACK_API_BASE = "https://meshimot-api.avivissta.workers.dev";
 
 function resolveBase() {
   if (typeof window !== "undefined" && window.__SHIFT_API_URL__) {
