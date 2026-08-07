@@ -32,8 +32,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+- name: Build
+  run: npm run build
+  env:
+    VITE_BASE: /mishmarot/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
