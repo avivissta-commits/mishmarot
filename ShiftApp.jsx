@@ -898,7 +898,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
       {/* week strip */}
       <div style={{ padding: "0 20px", position: "relative", zIndex: 2 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 14 }}>
-        <button onClick={() => setWeekOffset(weekOffset + 1)} style={navBtn}><ChevronRight size={20} color={T.text2} /></button>
+        <button onClick={() => setWeekOffset(weekOffset - 1)} style={navBtn}><ChevronRight size={20} color={T.text2} /></button>
         <button onClick={() => { setWeekOffset(0); setFocusDay(null); }} style={{
           border: "none", cursor: "pointer", fontFamily: T.font,
           fontSize: 15, fontWeight: weekOffset === 0 ? 700 : 600,
@@ -909,7 +909,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
         }}>
           {weekOffset === 0 ? "השבוע" : `${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 6))}`}
         </button>
-        <button onClick={() => setWeekOffset(weekOffset - 1)} style={navBtn}><ChevronLeft size={20} color={T.text2} /></button>
+        <button onClick={() => setWeekOffset(weekOffset + 1)} style={navBtn}><ChevronLeft size={20} color={T.text2} /></button>
       </div>
       <div key={"strip" + weekOffset} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, paddingBottom: 4, animation: weekAnim }} className="noscroll">
         {week.map((d) => {
