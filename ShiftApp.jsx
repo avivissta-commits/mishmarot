@@ -946,11 +946,12 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
         const dayShifts = shifts.filter((s) => s.date === ymd(d)).sort((a, b) => toMin(a.start) - toMin(b.start));
         const isPast = ymd(d) < ymd(now); // date-only comparison; past days appear faded
         return (
-          <div key={ymd(d)} style={{ marginTop: 8, filter: isPast ? "opacity(0.66) saturate(0.85)" : "none", transition: "filter .2s ease", animation: `cardIn .34s cubic-bezier(.32,.72,0,1) ${di * 0.06}s both` }}>
+          <div key={ymd(d)} style={{ marginTop: 8, animation: `cardIn .34s cubic-bezier(.32,.72,0,1) ${di * 0.06}s both` }}>
             <div style={{
               fontSize: 11, fontWeight: sameYMD(d, now) ? 700 : 600,
               color: sameYMD(d, now) ? T.primary : T.text2,
               marginBottom: 4, marginInlineStart: 2,
+              opacity: isPast ? 0.5 : 1,
             }}>
               {sameYMD(d, now) ? "היום · " : ""}{longDate(d)}
             </div>
@@ -960,7 +961,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
                 padding: "0 14px", cursor: "pointer", color: T.text2, fontFamily: T.font,
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
               }}>
-                <span style={{ fontSize: 13 }}>אין משמרת ביום הזה</span>
+                <span style={{ fontSize: 13, opacity: isPast ? 0.5 : 1 }}>אין משמרת ביום הזה</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: T.primary, fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
                   <Plus size={14} /> הוספת משמרת
                 </span>
