@@ -946,7 +946,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
         const dayShifts = shifts.filter((s) => s.date === ymd(d)).sort((a, b) => toMin(a.start) - toMin(b.start));
         const isPast = ymd(d) < ymd(now); // date-only comparison; past days appear faded
         return (
-          <div key={ymd(d)} style={{ marginTop: 8, opacity: isPast ? 0.45 : 1, transition: "opacity .2s ease", animation: `cardIn .34s cubic-bezier(.32,.72,0,1) ${di * 0.06}s both` }}>
+          <div key={ymd(d)} style={{ marginTop: 8, filter: isPast ? "opacity(0.4) saturate(0.7)" : "none", transition: "filter .2s ease", animation: `cardIn .34s cubic-bezier(.32,.72,0,1) ${di * 0.06}s both` }}>
             <div style={{
               fontSize: 11, fontWeight: sameYMD(d, now) ? 700 : 600,
               color: sameYMD(d, now) ? T.primary : T.text2,
