@@ -92,7 +92,8 @@ function Sheet({ title, onClose, onBack, closing, children, maxHeight = "88%" })
         style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,0.35)",
           animation: closing ? "fadeOut .2s ease forwards" : "fadeIn .2s ease" }} />
       <div style={{
-        position: "absolute", left: 0, right: 0, bottom: 0, maxWidth: 480, margin: "0 auto", maxHeight,
+        position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", maxWidth: 480, margin: "0 auto", maxHeight,
+        boxSizing: "border-box", overflowX: "hidden",
         background: T.card, borderTopLeftRadius: 28, borderTopRightRadius: 28,
         boxShadow: "0 -8px 40px rgba(17,24,39,0.14)", display: "flex", flexDirection: "column",
         animation: closing ? "sheetOut .22s cubic-bezier(.32,.72,0,1) forwards" : "sheetIn .28s cubic-bezier(.32,.72,0,1)",
@@ -100,20 +101,20 @@ function Sheet({ title, onClose, onBack, closing, children, maxHeight = "88%" })
         <div style={{ display: "flex", justifyContent: "center", paddingTop: 10 }}>
           <div style={{ width: 40, height: 5, borderRadius: 999, background: T.divider }} />
         </div>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, padding: "10px 22px 6px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, padding: "10px 20px 6px" }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", gap: 10 }}>
             {onBack && (
               <button onClick={onBack} aria-label="חזרה" style={{ flex: "0 0 auto", marginTop: 1, border: "none", background: "#F0F2F5", borderRadius: 999, width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer" }}>
                 <ChevronRight size={18} color={T.text} />
               </button>
             )}
-            <span style={{ flex: 1, minWidth: 0, fontSize: 20, fontWeight: 700, color: T.text }}>{title}</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 20, fontWeight: 700, color: T.text, overflowWrap: "anywhere" }}>{title}</span>
           </div>
           <button onClick={onClose} aria-label="סגירה" style={{ flex: "0 0 auto", marginTop: 2, border: "none", background: "#F0F2F5", borderRadius: 999, width: 34, height: 34, display: "grid", placeItems: "center", cursor: "pointer" }}>
             <X size={18} color={T.text2} />
           </button>
         </div>
-        <div style={{ overflowY: "auto", padding: "6px 22px 26px" }}>{children}</div>
+        <div style={{ overflowY: "auto", overflowX: "hidden", padding: "6px 20px calc(26px + env(safe-area-inset-bottom, 0px))" }}>{children}</div>
       </div>
     </div>
   );
@@ -834,7 +835,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
     `${sameYMD(parseYMD(featured.date), now) ? "היום" : sameYMD(parseYMD(featured.date), addDays(now, 1)) ? "מחר" : DAYS[parseYMD(featured.date).getDay()]} ב${featWp.name}`) : "";
 
   return (
-    <div style={{ padding: "0 0 120px", position: "relative", overflow: "visible" }}>
+    <div style={{ padding: "0 0 120px", position: "relative", overflowX: "clip", width: "100%", maxWidth: "100%" }}>
       {/* decorative soft blobs */}
       <div aria-hidden style={{
         position: "absolute", top: -20, right: -60, width: 220, height: 220, borderRadius: "50%",
@@ -1259,11 +1260,14 @@ export default function App() {
   const NAV_MAX = 480;
 
   return (
-    <div dir="rtl" style={{ minHeight: "100vh", background: "linear-gradient(180deg, #F3F7FF 0%, #F7F8FA 32%, #F7F8FA 100%)", fontFamily: T.font, color: T.text }}>
+    <div dir="rtl" className="app-root" style={{ minHeight: "100vh", width: "100%", maxWidth: "100%", overflowX: "hidden", background: "linear-gradient(180deg, #F3F7FF 0%, #F7F8FA 32%, #F7F8FA 100%)", fontFamily: T.font, color: T.text }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap');
-        html,body{margin:0;background:#F3F7FF;}
+        html,body{margin:0;background:#F3F7FF;width:100%;max-width:100%;overflow-x:hidden;}
+        html{-webkit-text-size-adjust:100%;}
         * { box-sizing: border-box; }
+        img { max-width: 100%; }
+        .app-root { width:100%; max-width:100%; overflow-x:hidden; }
         .noscroll::-webkit-scrollbar { display:none; }
         .noscroll { scrollbar-width: none; }
         .wheelcol::-webkit-scrollbar { display:none; }
@@ -1359,8 +1363,9 @@ export default function App() {
         .currentShiftCard {
           position: relative;
           z-index: 2;
-          width: 62%;
-          min-width: 250px;
+          width: clamp(0px, 62%, calc(100% - 32px));
+          min-width: min(250px, calc(100% - 32px));
+          max-width: calc(100% - 32px);
           margin-inline-start: 16px;
           margin-inline-end: auto;
           margin-top: -160px;
@@ -1435,7 +1440,7 @@ export default function App() {
       `}</style>
 
       {/* app column */}
-      <div style={{ maxWidth: NAV_MAX, margin: "0 auto", minHeight: "100vh", position: "relative" }}>
+      <div style={{ width: "100%", maxWidth: NAV_MAX, margin: "0 auto", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
         <div key={tab} style={{ paddingBottom: 130, animation: "tabIn .22s ease" }}>
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", gap: 14 }}>
@@ -1454,7 +1459,7 @@ export default function App() {
 
       {/* bottom nav: floating iOS-style pill */}
       <div style={{
-        position: "fixed", bottom: 18, left: "50%", transform: "translateX(-50%)",
+        position: "fixed", bottom: "calc(18px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)",
         width: "calc(100% - 32px)", maxWidth: NAV_MAX - 32,
         height: 88, background: "rgba(255,255,255,0.78)", backdropFilter: "blur(24px) saturate(1.6)",
         WebkitBackdropFilter: "blur(24px) saturate(1.6)",
@@ -1470,7 +1475,7 @@ export default function App() {
 
       {/* FAB */}
       <button onClick={() => actions.add(null)} aria-label="הוספת משמרת" style={{
-        position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 22,
+        position: "fixed", bottom: "calc(28px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 22,
         width: 68, height: 68, borderRadius: 999, background: T.primary, border: "5px solid #fff",
         boxShadow: "0 10px 26px rgba(22,119,255,0.45)", cursor: "pointer", display: "grid", placeItems: "center",
       }}>
