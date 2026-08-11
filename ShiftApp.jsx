@@ -252,14 +252,14 @@ function ShiftSheet({ mode, initial, fixedDate, workplaces, shifts, onClose, clo
       {/* date — hidden entirely when the day is fixed (added for a specific day) */}
       {!fixedDate && (<>
         <SectionLabel>יום</SectionLabel>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {quickDays.map((d, i) => (
             <Chip key={i} active={!showPicker && date === ymd(d)} onClick={() => { setDate(ymd(d)); setShowPicker(false); }}>
               {i === 0 ? "היום" : i === 1 ? "מחר" : DAYS[d.getDay()]}
             </Chip>
           ))}
           <Chip active={showPicker || !quickDays.some((d) => ymd(d) === date)} onClick={() => setShowPicker((v) => !v)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginInlineStart: "auto" }}>
             <CalendarDays size={16} color={(showPicker || !quickDays.some((d) => ymd(d) === date)) ? "#fff" : T.text2} />
             {!quickDays.some((d) => ymd(d) === date) ? shortDate(dObj) : "תאריך"}
           </Chip>
