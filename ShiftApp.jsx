@@ -803,16 +803,29 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
   const remainingLabel = (s) => {
     const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ...s.end.split(":").map(Number));
     const diff = Math.max(0, target - now); const h = Math.floor(diff / 3600000); const m = Math.floor((diff % 3600000) / 60000);
-    if (h >= 1) return `נותרו ${h} שעות ו־${m} דקות`;
-    return `נותרו ${m} דקות`;
+    const hLabel = h === 1 ? "שעה" : "שעות";
+    const mLabel = m === 1 ? "דקה" : "דקות";
+    if (h >= 1) return `נותרו ${h} ${hLabel} ו־${m} ${mLabel}`;
+    return `נותרו ${m} ${mLabel}`;
   };
 
   const countdown = (s) => {
     const d = parseYMD(s.date); const target = new Date(d.getFullYear(), d.getMonth(), d.getDate(), ...s.start.split(":").map(Number));
-    const diff = Math.max(0, target - now); const h = Math.floor(diff / 3600000); const m = Math.floor((diff % 3600000) / 60000);
-    if (h >= 24) return `בעוד ${Math.round(h / 24)} ימים`;
-    if (h >= 1) return `מתחילה בעוד ${h} שעות`;
-    return `מתחילה בעוד ${m} דקות`;
+    const diff = Math.max(0, target - now);
+    const totalMin = Math.floor(diff / 60000);
+    const days = Math.floor(totalMin / 1440);
+    const h = Math.floor((totalMin % 1440) / 60);
+    const m = totalMin % 60;
+    const hLabel = h === 1 ? "שעה" : "שעות";
+    const mLabel = m === 1 ? "דקה" : "דקות";
+    if (days >= 1) {
+      const remH = h;
+      return remH > 0
+        ? `בעוד ${days} ${days === 1 ? "יום" : "ימים"} ו־${remH} ${remH === 1 ? "שעה" : "שעות"}`
+        : `בעוד ${days} ${days === 1 ? "יום" : "ימים"}`;
+    }
+    if (h >= 1) return `מתחילה בעוד ${h} ${hLabel} ו־${m} ${mLabel}`;
+    return `מתחילה בעוד ${m} ${mLabel}`;
   };
 
   // direction of week change → slide animation
@@ -1250,7 +1263,7 @@ export default function App() {
   };
 
   const [now, setNow] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 15000); return () => clearInterval(t); }, []);
 
   const actions = {
     add: (date, fixed) => openSheet({ type: "shift", mode: "add", initial: date ? { date } : null, fixedDate: !!fixed }),
