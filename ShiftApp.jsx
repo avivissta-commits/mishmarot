@@ -840,166 +840,186 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
     if (weekOffset === 0 && todayRef.current) todayRef.current.scrollIntoView({ inline: "center", block: "nearest" });
   }, [weekOffset]);
 
-  let cardN = 0; // running index for staggered card entrance
-
   const featWp = featured ? wpById(featured.workplaceId) : null;
   const featSt = featured ? stById(featured.workplaceId, featured.shiftTypeId) : null;
   const featTitle = featured ? (ongoing ? featWp.name :
     `${sameYMD(parseYMD(featured.date), now) ? "היום" : sameYMD(parseYMD(featured.date), addDays(now, 1)) ? "מחר" : DAYS[parseYMD(featured.date).getDay()]} ב${featWp.name}`) : "";
 
   return (
-    <div style={{ padding: "0 0 120px", position: "relative", overflowX: "clip", width: "100%", maxWidth: "100%" }}>
-      {/* decorative soft blobs */}
-      <div aria-hidden style={{
-        position: "absolute", top: -20, right: -60, width: 220, height: 220, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(22,119,255,0.12) 0%, rgba(22,119,255,0) 70%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-      <div aria-hidden style={{
-        position: "absolute", top: 150, left: -70, width: 180, height: 180, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(29,185,84,0.09) 0%, rgba(29,185,84,0) 70%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
+    <div className="snapScroll" style={{ height: "100dvh", overflowY: "auto", overflowX: "clip", scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch", width: "100%", maxWidth: "100%" }}>
 
-      {/* HERO */}
-      <header className="hero">
-        <button onClick={onOpenSettings} aria-label="הגדרות" className="settingsButton">
-          <Settings size={20} color={T.text2} strokeWidth={2} />
-        </button>
-        <div className="heroGrid">
-          <div className="greetingBlock">
-            <div className="greetingLine">היי {name} 👋</div>
-            <div className="dayGreeting">{greet}</div>
-            <div className="greetingSubtitle">הנה המשמרות שלך לשבוע הקרוב</div>
+      {/* ===================== SECTION 1 — HOME / HERO ===================== */}
+      <section style={{ position: "relative", height: "100dvh", scrollSnapAlign: "start", scrollSnapStop: "always", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* decorative soft blobs */}
+        <div aria-hidden style={{ position: "absolute", top: -20, right: -60, width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(22,119,255,0.12) 0%, rgba(22,119,255,0) 70%)", pointerEvents: "none", zIndex: 0 }} />
+        <div aria-hidden style={{ position: "absolute", top: 150, left: -70, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(29,185,84,0.09) 0%, rgba(29,185,84,0) 70%)", pointerEvents: "none", zIndex: 0 }} />
+
+        {/* HERO */}
+        <header className="hero">
+          <button onClick={onOpenSettings} aria-label="הגדרות" className="settingsButton">
+            <Settings size={20} color={T.text2} strokeWidth={2} />
+          </button>
+          <div className="heroGrid">
+            <div className="greetingBlock">
+              <div className="greetingLine">היי {name} 👋</div>
+              <div className="dayGreeting">{greet}</div>
+              <div className="greetingSubtitle">הנה המשמרות שלך לשבוע הקרוב</div>
+            </div>
+            <div className="mascotWrapper">
+              <img src={CHARACTER_IMG} alt="" className="mascotImage" />
+            </div>
           </div>
-          <div className="mascotWrapper">
-            <img src={CHARACTER_IMG} alt="" className="mascotImage" />
+        </header>
+
+        {/* CURRENT SHIFT CARD */}
+        <section className="currentShiftCard">
+          {featured ? (<>
+            <div className="cardTopRow">
+              <div className="statusStack">
+                <div className="statusBadge" style={{ background: ongoing ? "#EAFBF1" : "#F0F7FF", color: ongoing ? T.success : T.primary }}>
+                  <span className="statusDot" style={{ background: ongoing ? T.success : T.primary }} />
+                  {ongoing ? "אתה במשמרת עכשיו" : "המשמרת הבאה שלך"}
+                </div>
+                <div className="remainingText" style={{ color: ongoing ? T.success : T.primary }}>
+                  {ongoing ? remainingLabel(featured) : countdown(featured)}
+                </div>
+              </div>
+            </div>
+            <div className="cardMainRow">
+              <div className="shiftInfo">
+                <h2 className="shiftWorkplace">{featTitle}</h2>
+                <div className="shiftMeta">
+                  <ShiftIcon kind={featSt.kind} size={16} />
+                  <span>{featSt.name}</span>
+                  <span className="metaSep">•</span>
+                  <span className="shiftTime" style={{ direction: "ltr" }}>{featured.start}–{featured.end}</span>
+                </div>
+              </div>
+            </div>
+          </>) : (
+            <div style={{ fontSize: 16, fontWeight: 600, color: T.text }}>אין משמרות קרובות</div>
+          )}
+        </section>
+
+        {/* week strip */}
+        <div style={{ padding: "0 20px", position: "relative", zIndex: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 14 }}>
+            <button onClick={() => setWeekOffset(weekOffset - 1)} style={navBtn}><ChevronRight size={20} color={T.text2} /></button>
+            <button onClick={() => { setWeekOffset(0); setFocusDay(null); }} style={{
+              border: "none", cursor: "pointer", fontFamily: T.font,
+              fontSize: 15, fontWeight: weekOffset === 0 ? 700 : 600,
+              color: weekOffset === 0 ? T.primary : T.text,
+              padding: "6px 18px", borderRadius: 999, position: "relative", zIndex: 1,
+              background: "radial-gradient(ellipse 80% 120% at center, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 45%, rgba(255,255,255,0) 75%)",
+              boxShadow: "0 0 24px 16px rgba(255,255,255,0.9)",
+            }}>
+              {weekOffset === 0 ? "השבוע" : `${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 6))}`}
+            </button>
+            <button onClick={() => setWeekOffset(weekOffset + 1)} style={navBtn}><ChevronLeft size={20} color={T.text2} /></button>
+          </div>
+          <div key={"strip" + weekOffset} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, paddingBottom: 4, animation: weekAnim }} className="noscroll">
+            {week.map((d) => {
+              const isToday = sameYMD(d, now);
+              const isFocus = focusDay === ymd(d);
+              const dayWpColors = [...new Set(shifts.filter((s) => s.date === ymd(d)).map((s) => s.workplaceId))]
+                .map((wid) => wpById(wid)?.accent).filter(Boolean);
+              return (
+                <button key={ymd(d)} ref={isToday ? todayRef : null} onClick={() => setFocusDay(isFocus ? null : ymd(d))}
+                  style={{
+                    width: "100%", minWidth: 0, height: 80, padding: 0, borderRadius: 18, cursor: "pointer",
+                    border: isToday && !isFocus ? `2px solid ${T.primary}` : "1.5px solid transparent",
+                    background: isFocus ? T.primary : "#fff", boxShadow: isFocus ? "0 6px 14px rgba(22,119,255,.35)" : "0 1px 4px rgba(17,24,39,0.04)",
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                    transition: "background .2s ease",
+                  }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: isFocus ? "rgba(255,255,255,.9)" : (isToday ? T.primary : T.text2) }}>{DAYS_SHORT[d.getDay()]}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: isFocus ? "#fff" : (isToday ? T.primary : T.text) }}>{d.getDate()}</span>
+                  <span style={{ display: "flex", gap: 3, height: 5, alignItems: "center" }}>
+                    {dayWpColors.length > 0
+                      ? dayWpColors.map((c, i) => (
+                          <span key={i} style={{ width: 5, height: 5, borderRadius: 999, background: isFocus ? "#fff" : c }} />
+                        ))
+                      : <span style={{ width: 5, height: 5 }} />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 18, color: T.text2, opacity: 0.6, fontSize: 12, gap: 4, alignItems: "center" }}>
+            משמרות השבוע <ChevronLeft size={14} style={{ transform: "rotate(-90deg)" }} />
           </div>
         </div>
-      </header>
-
-      {/* CURRENT SHIFT CARD */}
-      <section className="currentShiftCard">
-        {featured ? (<>
-          <div className="cardTopRow">
-            <div className="statusStack">
-              <div className="statusBadge" style={{ background: ongoing ? "#EAFBF1" : "#F0F7FF", color: ongoing ? T.success : T.primary }}>
-                <span className="statusDot" style={{ background: ongoing ? T.success : T.primary }} />
-                {ongoing ? "אתה במשמרת עכשיו" : "המשמרת הבאה שלך"}
-              </div>
-              <div className="remainingText" style={{ color: ongoing ? T.success : T.primary }}>
-                {ongoing ? remainingLabel(featured) : countdown(featured)}
-              </div>
-            </div>
-          </div>
-          <div className="cardMainRow">
-            <div className="shiftInfo">
-              <h2 className="shiftWorkplace">{featTitle}</h2>
-              <div className="shiftMeta">
-                <ShiftIcon kind={featSt.kind} size={16} />
-                <span>{featSt.name}</span>
-                <span className="metaSep">•</span>
-                <span className="shiftTime" style={{ direction: "ltr" }}>{featured.start}–{featured.end}</span>
-              </div>
-            </div>
-          </div>
-        </>) : (
-          <div style={{ fontSize: 16, fontWeight: 600, color: T.text }}>אין משמרות קרובות</div>
-        )}
       </section>
 
-      {/* week strip */}
-      <div style={{ padding: "0 20px", position: "relative", zIndex: 2 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 14 }}>
-        <button onClick={() => setWeekOffset(weekOffset - 1)} style={navBtn}><ChevronRight size={20} color={T.text2} /></button>
-        <button onClick={() => { setWeekOffset(0); setFocusDay(null); }} style={{
-          border: "none", cursor: "pointer", fontFamily: T.font,
-          fontSize: 15, fontWeight: weekOffset === 0 ? 700 : 600,
-          color: weekOffset === 0 ? T.primary : T.text,
-          padding: "6px 18px", borderRadius: 999, position: "relative", zIndex: 1,
-          background: "radial-gradient(ellipse 80% 120% at center, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 45%, rgba(255,255,255,0) 75%)",
-          boxShadow: "0 0 24px 16px rgba(255,255,255,0.9)",
-        }}>
-          {weekOffset === 0 ? "השבוע" : `${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 6))}`}
-        </button>
-        <button onClick={() => setWeekOffset(weekOffset + 1)} style={navBtn}><ChevronLeft size={20} color={T.text2} /></button>
-      </div>
-      <div key={"strip" + weekOffset} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, paddingBottom: 4, animation: weekAnim }} className="noscroll">
-        {week.map((d) => {
-          const isToday = sameYMD(d, now);
-          const isFocus = focusDay === ymd(d);
-          const dayWpColors = [...new Set(shifts.filter((s) => s.date === ymd(d)).map((s) => s.workplaceId))]
-            .map((wid) => wpById(wid)?.accent).filter(Boolean);
-          return (
-            <button key={ymd(d)} ref={isToday ? todayRef : null} onClick={() => setFocusDay(isFocus ? null : ymd(d))}
-              style={{
-                width: "100%", minWidth: 0, height: 80, padding: 0, borderRadius: 18, cursor: "pointer",
-                border: isToday && !isFocus ? `2px solid ${T.primary}` : "1.5px solid transparent",
-                background: isFocus ? T.primary : "#fff", boxShadow: isFocus ? "0 6px 14px rgba(22,119,255,.35)" : "0 1px 4px rgba(17,24,39,0.04)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-                transition: "background .2s ease",
-              }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: isFocus ? "rgba(255,255,255,.9)" : (isToday ? T.primary : T.text2) }}>{DAYS_SHORT[d.getDay()]}</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: isFocus ? "#fff" : (isToday ? T.primary : T.text) }}>{d.getDate()}</span>
-              <span style={{ display: "flex", gap: 3, height: 5, alignItems: "center" }}>
-                {dayWpColors.length > 0
-                  ? dayWpColors.map((c, i) => (
-                      <span key={i} style={{ width: 5, height: 5, borderRadius: 999, background: isFocus ? "#fff" : c }} />
-                    ))
-                  : <span style={{ width: 5, height: 5 }} />}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* day sections */}
-      <div key={"days" + weekOffset + "_" + (focusDay || "all")} style={{ marginTop: 18 }}>
-      {week.filter((d) => !focusDay || ymd(d) === focusDay).map((d, di) => {
-        const dayShifts = shifts.filter((s) => s.date === ymd(d)).sort((a, b) => toMin(a.start) - toMin(b.start));
-        const isPast = ymd(d) < ymd(now); // date-only comparison; past days appear faded
-        return (
-          <div key={ymd(d)} style={{ marginTop: 8, animation: `cardIn .34s cubic-bezier(.32,.72,0,1) ${di * 0.06}s both` }}>
-            <div style={{
-              fontSize: 11, fontWeight: sameYMD(d, now) ? 700 : 600,
-              color: sameYMD(d, now) ? T.primary : T.text2,
-              marginBottom: 4, marginInlineStart: 2,
-              opacity: isPast ? 0.5 : 1,
-            }}>
-              {sameYMD(d, now) ? "היום · " : ""}{longDate(d)}
-            </div>
-            {dayShifts.length === 0 ? (
-              <button onClick={() => actions.add(ymd(d), true)} style={{
-                width: "100%", minHeight: 52, background: "#fff", borderRadius: 14, border: `1.5px dashed ${T.divider}`,
-                padding: "0 14px", cursor: "pointer", color: T.text2, fontFamily: T.font,
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-              }}>
-                <span style={{ fontSize: 13, opacity: isPast ? 0.5 : 1 }}>אין משמרת ביום הזה</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: T.primary, fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
-                  <Plus size={14} /> הוספת משמרת
-                </span>
-              </button>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {dayShifts.map((s) => (
-                  <ShiftCard key={s.id} index={cardN++} shift={s} wp={wpById(s.workplaceId)} st={stById(s.workplaceId, s.shiftTypeId)}
-                    onEdit={() => actions.edit(s)} onDuplicate={() => actions.duplicate(s)} onMenu={() => actions.menu(s)} />
-                ))}
-                <button onClick={() => actions.add(ymd(d), true)} style={{
-                  width: "100%", background: "transparent", borderRadius: 16, border: `1.5px dashed ${T.divider}`,
-                  padding: "9px 16px", cursor: "pointer", fontFamily: T.font,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  color: T.primary, fontWeight: 600, fontSize: 13,
+      {/* ===================== SECTION 2 — WEEK SHIFTS (all 7 days, one viewport) ===================== */}
+      <section style={{
+        height: "100dvh", scrollSnapAlign: "start", scrollSnapStop: "always",
+        display: "flex", flexDirection: "column", boxSizing: "border-box",
+        padding: "16px 20px calc(120px + env(safe-area-inset-bottom, 0px))",
+      }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, flex: "0 0 auto" }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>משמרות השבוע</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>{weekOffset === 0 ? "השבוע" : `${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 6))}`}</span>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          {week.map((d) => {
+            const dayShifts = shifts.filter((s) => s.date === ymd(d)).sort((a, b) => toMin(a.start) - toMin(b.start));
+            const isToday = sameYMD(d, now);
+            const isPast = ymd(d) < ymd(now);
+            return (
+              <div key={ymd(d)} style={{ flex: "1 1 0", minHeight: 0, display: "flex", gap: 8, alignItems: "stretch" }}>
+                {/* day label stub */}
+                <div style={{
+                  width: 44, flexShrink: 0, borderRadius: 12,
+                  border: isToday ? `1.5px solid ${T.primary}` : "1.5px solid transparent",
+                  background: isToday ? "#F0F7FF" : "#fff",
+                  boxShadow: isToday ? "none" : "0 1px 3px rgba(17,24,39,0.04)",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  opacity: isPast ? 0.5 : 1,
                 }}>
-                  <Plus size={14} /> הוספת משמרת נוספת ליום זה
-                </button>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: isToday ? T.primary : T.text2, lineHeight: 1.1 }}>{DAYS_SHORT[d.getDay()]}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: isToday ? T.primary : T.text, lineHeight: 1.2 }}>{d.getDate()}</span>
+                </div>
+                {/* shifts column */}
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                  {dayShifts.length === 0 ? (
+                    <button onClick={() => actions.add(ymd(d), true)} style={{
+                      width: "100%", minHeight: 34, display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: "transparent", border: `1.5px dashed ${T.divider}`, borderRadius: 10,
+                      padding: "0 12px", cursor: "pointer", fontFamily: T.font,
+                    }}>
+                      <span style={{ fontSize: 12.5, color: T.text2, opacity: isPast ? 0.6 : 1 }}>אין משמרת</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: T.primary, fontWeight: 600, fontSize: 12.5, whiteSpace: "nowrap" }}>
+                        <Plus size={13} /> הוספה
+                      </span>
+                    </button>
+                  ) : (
+                    dayShifts.map((s) => {
+                      const wp = wpById(s.workplaceId); const st = stById(s.workplaceId, s.shiftTypeId);
+                      return (
+                        <button key={s.id} onClick={() => actions.menu(s)} style={{
+                          width: "100%", minHeight: 30, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                          background: "#fff", border: "none", borderRadius: 10,
+                          borderInlineStart: `3px solid ${wp?.accent || T.primary}`,
+                          padding: "0 10px", cursor: "pointer", fontFamily: T.font,
+                          boxShadow: "0 1px 3px rgba(17,24,39,0.05)", opacity: isPast ? 0.6 : 1,
+                        }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                            <ShiftIcon kind={st?.kind} size={13} />
+                            <span style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wp?.name}</span>
+                            <span style={{ fontSize: 11, color: T.text2, whiteSpace: "nowrap" }}>{st?.name}</span>
+                          </span>
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: T.text, direction: "ltr", whiteSpace: "nowrap" }}>{s.start}–{s.end}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        );
-      })}
-      </div>
-      </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1285,6 +1305,8 @@ export default function App() {
         .app-root { width:100%; max-width:100%; overflow-x:hidden; }
         .noscroll::-webkit-scrollbar { display:none; }
         .noscroll { scrollbar-width: none; }
+        .snapScroll::-webkit-scrollbar { display:none; }
+        .snapScroll { scrollbar-width: none; overscroll-behavior-y: contain; scroll-behavior: smooth; }
         .wheelcol::-webkit-scrollbar { display:none; }
         .wheelcol { scrollbar-width: none; }
         @keyframes sheetIn { from{transform:translateY(100%)} to{transform:translateY(0)} }
@@ -1456,7 +1478,7 @@ export default function App() {
 
       {/* app column */}
       <div style={{ width: "100%", maxWidth: NAV_MAX, margin: "0 auto", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
-        <div key={tab} style={{ paddingBottom: 130, animation: "tabIn .22s ease" }}>
+        <div key={tab} style={{ paddingBottom: tab === "home" ? 0 : 130, animation: "tabIn .22s ease" }}>
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", gap: 14 }}>
               <div style={{ width: 34, height: 34, borderRadius: 999, border: `3px solid ${T.divider}`, borderTopColor: T.primary, animation: "spin .8s linear infinite" }} />
