@@ -29,6 +29,7 @@ const T = {
 const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const DAYS_SHORT = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 const MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+const MAX_SHIFTS_PER_DAY = 2;
 
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -236,9 +237,13 @@ function ShiftSheet({ mode, initial, fixedDate, workplaces, shifts, onClose, clo
     setWarn(null);
     if (!wp || !st || !start || !end) return;
     if (toMin(end) <= toMin(start)) { setWarn("שעת הסיום חייבת להיות אחרי שעת ההתחלה"); return; }
+    const otherShiftsOnDate = shifts.filter((s) => s.id !== initial?.id && s.date === date);
+    if (otherShiftsOnDate.length >= MAX_SHIFTS_PER_DAY) {
+      setWarn("ניתן להוסיף עד שתי משמרות ביום");
+      return;
+    }
     if (!force) {
-      const clash = shifts.some((s) =>
-        s.id !== initial?.id && s.date === date &&
+      const clash = otherShiftsOnDate.some((s) =>
         toMin(start) < toMin(s.end) && toMin(s.start) < toMin(end));
       if (clash) { setOverlap(true); return; }
     }
@@ -365,7 +370,7 @@ function ShiftSheet({ mode, initial, fixedDate, workplaces, shifts, onClose, clo
 const btnGhost = { flex: 1, minHeight: 46, borderRadius: T.rBtn, border: `1.5px solid ${T.divider}`, background: "#fff", fontFamily: T.font, fontSize: 15, fontWeight: 600, color: T.text, cursor: "pointer" };
 
 /* ============================ Duplicate sheet ============================ */
-function DuplicateSheet({ source, workplaces, onClose, closing, onConfirm }) {
+function DuplicateSheet({ source, workplaces, shifts, onClose, closing, onConfirm }) {
   const [picked, setPicked] = useState([]);
   const wp = workplaces.find((w) => w.id === source.workplaceId);
   const st = wp?.shiftTypes.find((s) => s.id === source.shiftTypeId);
@@ -389,12 +394,14 @@ function DuplicateSheet({ source, workplaces, onClose, closing, onConfirm }) {
         {week.map((d) => {
           const iso = ymd(d);
           const active = picked.includes(iso);
+          const isFull = shifts.filter((s) => s.date === iso).length >= MAX_SHIFTS_PER_DAY;
           return (
-            <button key={iso} onClick={() => toggle(iso)} style={{
-              border: "none", cursor: "pointer", fontFamily: T.font, minHeight: 58, minWidth: 56,
+            <button key={iso} onClick={() => !isFull && toggle(iso)} disabled={isFull} style={{
+              border: "none", cursor: isFull ? "not-allowed" : "pointer", fontFamily: T.font, minHeight: 58, minWidth: 56,
               padding: "8px 10px", borderRadius: T.rInput, textAlign: "center",
               background: active ? T.primary : "#EEF1F5", color: active ? "#fff" : T.text,
               transition: "all .18s ease", display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              opacity: isFull ? 0.45 : 1,
             }}>
               <span style={{ fontSize: 13, fontWeight: 600, opacity: active ? 0.85 : 0.7 }}>{DAYS_SHORT[d.getDay()]}</span>
               <span style={{ fontSize: 15, fontWeight: 700, direction: "ltr" }}>{pad(d.getDate())}/{pad(d.getMonth() + 1)}</span>
@@ -834,19 +841,13 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
   useEffect(() => { prevWeekRef.current = weekOffset; }, [weekOffset]);
   const weekAnim = dir === 0 ? "none" : dir > 0 ? "weekFwd .32s cubic-bezier(.32,.72,0,1)" : "weekBack .32s cubic-bezier(.32,.72,0,1)";
 
-  // keep today's chip in view on the current week
-  const todayRef = useRef(null);
-  useEffect(() => {
-    if (weekOffset === 0 && todayRef.current) todayRef.current.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [weekOffset]);
-
   const featWp = featured ? wpById(featured.workplaceId) : null;
   const featSt = featured ? stById(featured.workplaceId, featured.shiftTypeId) : null;
   const featTitle = featured ? (ongoing ? featWp.name :
     `${sameYMD(parseYMD(featured.date), now) ? "היום" : sameYMD(parseYMD(featured.date), addDays(now, 1)) ? "מחר" : DAYS[parseYMD(featured.date).getDay()]} ב${featWp.name}`) : "";
 
   return (
-    <div className="snapScroll" style={{ height: "100dvh", overflowY: "auto", overflowX: "clip", scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch", width: "100%", maxWidth: "100%" }}>
+    <div className="snapScroll" style={{ height: "100dvh", overflowY: "auto", overflowX: "hidden", scrollSnapType: "y mandatory", WebkitOverflowScrolling: "touch", width: "100%", maxWidth: "100%", margin: 0 }}>
 
       {/* ===================== SECTION 1 — HOME / HERO ===================== */}
       <section style={{ position: "relative", height: "100dvh", scrollSnapAlign: "start", scrollSnapStop: "always", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -924,7 +925,7 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
               const dayWpColors = [...new Set(shifts.filter((s) => s.date === ymd(d)).map((s) => s.workplaceId))]
                 .map((wid) => wpById(wid)?.accent).filter(Boolean);
               return (
-                <button key={ymd(d)} ref={isToday ? todayRef : null} onClick={() => setFocusDay(isFocus ? null : ymd(d))}
+                <button key={ymd(d)} onClick={() => setFocusDay(isFocus ? null : ymd(d))}
                   style={{
                     width: "100%", minWidth: 0, height: 80, padding: 0, borderRadius: 18, cursor: "pointer",
                     border: isToday && !isFocus ? `2px solid ${T.primary}` : "1.5px solid transparent",
@@ -990,29 +991,41 @@ function Home({ name, workplaces, shifts, weekOffset, setWeekOffset, focusDay, s
                     }}>
                       <span style={{ fontSize: 12.5, color: T.text2, opacity: isPast ? 0.6 : 1 }}>אין משמרת</span>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: T.primary, fontWeight: 600, fontSize: 12.5, whiteSpace: "nowrap" }}>
-                        <Plus size={13} /> הוספה
+                        <Plus size={13} /> הוסף משמרת
                       </span>
                     </button>
                   ) : (
-                    dayShifts.map((s) => {
-                      const wp = wpById(s.workplaceId); const st = stById(s.workplaceId, s.shiftTypeId);
-                      return (
-                        <button key={s.id} onClick={() => actions.menu(s)} style={{
-                          width: "100%", minHeight: 30, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                          background: "#fff", border: "none", borderRadius: 10,
-                          borderInlineStart: `3px solid ${wp?.accent || T.primary}`,
-                          padding: "0 10px", cursor: "pointer", fontFamily: T.font,
-                          boxShadow: "0 1px 3px rgba(17,24,39,0.05)", opacity: isPast ? 0.6 : 1,
+                    <>
+                      {dayShifts.map((s) => {
+                        const wp = wpById(s.workplaceId); const st = stById(s.workplaceId, s.shiftTypeId);
+                        return (
+                          <button key={s.id} onClick={() => actions.menu(s)} style={{
+                            width: "100%", minHeight: 30, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                            background: "#fff", border: "none", borderRadius: 10,
+                            borderInlineStart: `3px solid ${wp?.accent || T.primary}`,
+                            padding: "0 10px", cursor: "pointer", fontFamily: T.font,
+                            boxShadow: "0 1px 3px rgba(17,24,39,0.05)", opacity: isPast ? 0.6 : 1,
+                          }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                              <ShiftIcon kind={st?.kind} size={13} />
+                              <span style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wp?.name}</span>
+                              <span style={{ fontSize: 11, color: T.text2, whiteSpace: "nowrap" }}>{st?.name}</span>
+                            </span>
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: T.text, direction: "ltr", whiteSpace: "nowrap" }}>{s.start}–{s.end}</span>
+                          </button>
+                        );
+                      })}
+                      {dayShifts.length === 1 && (
+                        <button onClick={() => actions.add(ymd(d), true)} style={{
+                          width: "100%", minHeight: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: "transparent", border: `1.5px dashed ${T.divider}`, borderRadius: 8,
+                          padding: "1px 8px", cursor: "pointer", fontFamily: T.font,
+                          color: T.primary, fontWeight: 600, fontSize: 11.5, lineHeight: 1.2,
                         }}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                            <ShiftIcon kind={st?.kind} size={13} />
-                            <span style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wp?.name}</span>
-                            <span style={{ fontSize: 11, color: T.text2, whiteSpace: "nowrap" }}>{st?.name}</span>
-                          </span>
-                          <span style={{ fontSize: 12.5, fontWeight: 600, color: T.text, direction: "ltr", whiteSpace: "nowrap" }}>{s.start}–{s.end}</span>
+                          <Plus size={12} /> הוסף משמרת
                         </button>
-                      );
-                    })
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -1095,13 +1108,13 @@ function CalendarScreen({ workplaces, shifts, monthOffset, setMonthOffset, actio
               ))}
             </div>
           )}
-          <button onClick={() => actions.add(sel, true)} style={{
+          {selShifts.length < MAX_SHIFTS_PER_DAY && <button onClick={() => actions.add(sel, true)} style={{
             marginTop: 14, width: "100%", minHeight: 48, borderRadius: T.rBtn, cursor: "pointer",
             border: `1.5px dashed ${T.divider}`, background: "#fff", color: T.primary, fontFamily: T.font,
             fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
             <Plus size={18} /> הוספת משמרת ליום זה
-          </button>
+          </button>}
         </div>
       )}
     </div>
@@ -1302,7 +1315,7 @@ export default function App() {
         html{-webkit-text-size-adjust:100%;}
         * { box-sizing: border-box; }
         img { max-width: 100%; }
-        .app-root { width:100%; max-width:100%; overflow-x:hidden; }
+        #root, .app-root { width:100%; max-width:100%; overflow-x:hidden; }
         .noscroll::-webkit-scrollbar { display:none; }
         .noscroll { scrollbar-width: none; }
         .snapScroll::-webkit-scrollbar { display:none; }
@@ -1477,7 +1490,7 @@ export default function App() {
       `}</style>
 
       {/* app column */}
-      <div style={{ width: "100%", maxWidth: NAV_MAX, margin: "0 auto", minHeight: "100vh", position: "relative", overflowX: "hidden" }}>
+      <div style={{ width: "100%", maxWidth: NAV_MAX, margin: "0 auto", minHeight: "100vh", minWidth: 0, position: "relative", overflowX: "hidden" }}>
         <div key={tab} style={{ paddingBottom: tab === "home" ? 0 : 130, animation: "tabIn .22s ease" }}>
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", gap: 14 }}>
@@ -1531,7 +1544,7 @@ export default function App() {
           onDelete={() => deleteShift(sheet.shift.id)} />
       )}
       {sheet?.type === "duplicate" && (
-        <DuplicateSheet source={sheet.shift} workplaces={workplaces} onClose={closeSheet} closing={closing}
+        <DuplicateSheet source={sheet.shift} workplaces={workplaces} shifts={shifts} onClose={closeSheet} closing={closing}
           onConfirm={(days) => duplicateShift(sheet.shift, days)} />
       )}
       {sheet?.type === "workplace" && (

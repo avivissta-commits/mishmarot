@@ -2,7 +2,9 @@
 // -----------------------------------------------------------------------------
 // Centralized data layer for ShiftApp.
 // ALL reads and writes go through a Cloudflare Worker HTTP API (fetch).
-// This is a single-user personal app, so all devices use the same fixed user id.
+// The ONLY thing kept in localStorage is an anonymous user id, used to scope
+// the user's data on the Worker. No shift/workplace/profile data is cached
+// locally — the Worker is the single source of truth.
 // -----------------------------------------------------------------------------
 
 /**
@@ -11,42 +13,63 @@
  *   1. window.__SHIFT_API_URL__      (set at runtime, e.g. in index.html)
  *   2. import.meta.env.VITE_API_URL  (Vite build-time env var)
  *   3. the fallback constant below
+ * Replace the fallback with your real Worker URL, e.g.
+ *   https://shiftapp-api.<your-subdomain>.workers.dev
  */
-const FALLBACK_API_BASE = "https://meshimot-api.avivissta.workers.dev";
+const FALLBACK_API_BASE = "https://shiftapp-api.example.workers.dev";
 
 function resolveBase() {
   if (typeof window !== "undefined" && window.__SHIFT_API_URL__) {
     return String(window.__SHIFT_API_URL__).replace(/\/+$/, "");
   }
-
   try {
-    if (
-      typeof import.meta !== "undefined" &&
-      import.meta.env &&
-      import.meta.env.VITE_API_URL
-    ) {
+    // import.meta may be undefined in some bundlers; guard it.
+    if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) {
       return String(import.meta.env.VITE_API_URL).replace(/\/+$/, "");
     }
   } catch (_) {
-    // ignore
+    /* import.meta not available in this environment */
   }
-
   return FALLBACK_API_BASE.replace(/\/+$/, "");
 }
 
 const API_BASE = resolveBase();
 
 // -----------------------------------------------------------------------------
-// Single fixed user id for this personal app.
-// Every browser/device reads and writes the same KV record.
+// User id — the single allowed use of localStorage.
 // -----------------------------------------------------------------------------
-export function getUserId() {
-  return "yosi";
+const USER_ID_KEY = "shiftapp:userId";
+
+function makeId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "u_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
 }
 
-// Kept only so existing imports won't break if the app uses this function.
+export function getUserId() {
+  let id = null;
+  try {
+    id = localStorage.getItem(USER_ID_KEY);
+  } catch (_) {
+    /* localStorage unavailable (private mode / SSR) — fall back to in-memory id */
+  }
+  if (!id) {
+    id = makeId();
+    try {
+      localStorage.setItem(USER_ID_KEY, id);
+    } catch (_) {
+      /* ignore — id will just live for this session */
+    }
+  }
+  return id;
+}
+
+/** Clears the stored user id (e.g. on "sign out" / reset device). */
 export function clearUserId() {
-  // No-op: this app uses one fixed user.
+  try {
+    localStorage.removeItem(USER_ID_KEY);
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -64,7 +87,6 @@ export class ApiError extends Error {
 async function request(path, { method = "GET", body, signal } = {}) {
   const url = `${API_BASE}${path}`;
   let res;
-
   try {
     res = await fetch(url, {
       method,
@@ -76,38 +98,30 @@ async function request(path, { method = "GET", body, signal } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch (networkErr) {
-    throw new ApiError(
-      `Network error contacting API: ${networkErr.message}`,
-      0,
-      null
-    );
+    throw new ApiError(`Network error contacting API: ${networkErr.message}`, 0, null);
   }
 
   const text = await res.text();
   let data = null;
-
   if (text) {
     try {
       data = JSON.parse(text);
     } catch (_) {
-      data = text;
+      data = text; // non-JSON response
     }
   }
 
   if (!res.ok) {
-    const msg =
-      (data && data.error) ||
-      res.statusText ||
-      "Request failed";
-
+    const msg = (data && data.error) || res.statusText || "Request failed";
     throw new ApiError(msg, res.status, data);
   }
-
   return data;
 }
 
 // -----------------------------------------------------------------------------
-// Bootstrap
+// Bootstrap — fetch the whole state in one round trip.
+// Returns { profile, workplaces, shifts }.
+// The Worker seeds default workplaces for a brand-new user id.
 // -----------------------------------------------------------------------------
 export function getState({ signal } = {}) {
   return request("/api/state", { signal });
@@ -117,11 +131,7 @@ export function getState({ signal } = {}) {
 // Profile
 // -----------------------------------------------------------------------------
 export function saveProfile(profile, { signal } = {}) {
-  return request("/api/profile", {
-    method: "PUT",
-    body: profile,
-    signal,
-  });
+  return request("/api/profile", { method: "PUT", body: profile, signal });
 }
 
 // -----------------------------------------------------------------------------
@@ -132,11 +142,7 @@ export function listWorkplaces({ signal } = {}) {
 }
 
 export function createWorkplace(workplace, { signal } = {}) {
-  return request("/api/workplaces", {
-    method: "POST",
-    body: workplace,
-    signal,
-  });
+  return request("/api/workplaces", { method: "POST", body: workplace, signal });
 }
 
 export function updateWorkplace(id, workplace, { signal } = {}) {
@@ -148,17 +154,12 @@ export function updateWorkplace(id, workplace, { signal } = {}) {
 }
 
 export function deleteWorkplace(id, { signal } = {}) {
-  return request(`/api/workplaces/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    signal,
-  });
+  return request(`/api/workplaces/${encodeURIComponent(id)}`, { method: "DELETE", signal });
 }
 
+/** Upsert helper: create if new, update if it already has a server id. */
 export function saveWorkplace(workplace, existingIds = [], opts = {}) {
-  const exists =
-    workplace.id &&
-    existingIds.includes(workplace.id);
-
+  const exists = workplace.id && existingIds.includes(workplace.id);
   return exists
     ? updateWorkplace(workplace.id, workplace, opts)
     : createWorkplace(workplace, opts);
@@ -172,11 +173,7 @@ export function listShifts({ signal } = {}) {
 }
 
 export function createShift(shift, { signal } = {}) {
-  return request("/api/shifts", {
-    method: "POST",
-    body: shift,
-    signal,
-  });
+  return request("/api/shifts", { method: "POST", body: shift, signal });
 }
 
 export function updateShift(id, shift, { signal } = {}) {
@@ -188,18 +185,12 @@ export function updateShift(id, shift, { signal } = {}) {
 }
 
 export function deleteShift(id, { signal } = {}) {
-  return request(`/api/shifts/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    signal,
-  });
+  return request(`/api/shifts/${encodeURIComponent(id)}`, { method: "DELETE", signal });
 }
 
+/** Create many shifts at once (used by "duplicate"). Returns the created rows. */
 export function bulkCreateShifts(shifts, { signal } = {}) {
-  return request("/api/shifts/bulk", {
-    method: "POST",
-    body: { shifts },
-    signal,
-  });
+  return request("/api/shifts/bulk", { method: "POST", body: { shifts }, signal });
 }
 
 export { API_BASE };
